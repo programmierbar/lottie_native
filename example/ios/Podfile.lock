@@ -1,0 +1,29 @@
+PODS:
+  - Flutter (1.0.0)
+  - lottie-ios (4.2.0)
+  - lottie_native (0.0.1):
+    - Flutter
+    - lottie-ios (~> 4.2.0)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - lottie_native (from `.symlinks/plugins/lottie_native/ios`)
+
+SPEC REPOS:
+  trunk:
+    - lottie-ios
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  lottie_native:
+    :path: ".symlinks/plugins/lottie_native/ios"
+
+SPEC CHECKSUMS:
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  lottie-ios: 809ecf2d460ed650a6aed7aa88b2ec45fab4779c
+  lottie_native: 435a69a8cad05c4d2621d6906f89d4833baee6a4
+
+PODFILE CHECKSUM: 985e5b058f26709dc81f9ae74ea2b2775bdbcefe
+
+COCOAPODS: 1.12.1

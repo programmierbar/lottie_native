@@ -1,0 +1,15 @@
+name: lottie_native
+packages:
+  - .
+  - example
+repository: https://github.com/lotum/lottie_native
+
+command:
+  version:
+    branch: main
+    workspaceChangelog: false
+
+scripts:
+  format:dart: dart format .
+  format:check:dart: dart format . --set-exit-if-changed
+  analyze: dart analyze --fatal-infos
