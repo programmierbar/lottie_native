@@ -89,8 +89,12 @@ class LottieView internal constructor(
                 animationView.setMinAndMaxFrame(0, maxFrame.toInt())
                 animationView.setMinAndMaxProgress(0f, 1f)
                 animationView.playAnimation()
+                result.success(null)
             }
-            "resume" -> animationView.resumeAnimation()
+            "resume" -> {
+                animationView.resumeAnimation()
+                result.success(null)
+            }
             "playWithProgress" -> {
                 if (args["fromProgress"] != null) {
                     val fromProgress = (args["fromProgress"] as Double).toFloat()
@@ -99,6 +103,7 @@ class LottieView internal constructor(
                 val toProgress = (args["toProgress"] as Double).toFloat()
                 animationView.setMaxProgress(toProgress)
                 animationView.playAnimation()
+                result.success(null)
             }
             "playWithFrames" -> {
                 if (args["fromFrame"] != null) {
@@ -108,6 +113,7 @@ class LottieView internal constructor(
                 val toFrame = args["toFrame"] as Int
                 animationView.setMaxFrame(toFrame)
                 animationView.playAnimation()
+                result.success(null)
             }
             "stop" -> {
                 animationView.cancelAnimation()
@@ -115,12 +121,20 @@ class LottieView internal constructor(
                 val mode = animationView.repeatMode
                 animationView.repeatMode = LottieDrawable.RESTART
                 animationView.repeatMode = mode
+                result.success(null)
             }
-            "pause" -> animationView.pauseAnimation()
-            "setAnimationSpeed" -> animationView.speed = (args["speed"] as Double).toFloat()
+            "pause" -> {
+                animationView.pauseAnimation()
+                result.success(null)
+            }
+            "setAnimationSpeed" -> {
+                animationView.speed = (args["speed"] as Double).toFloat()
+                result.success(null)
+            }
             "setLoopAnimation" -> {
                 val loop = if (args["loop"] != null) args["loop"] as Boolean else false
                 animationView.repeatCount = if (loop) -1 else 0
+                result.success(null)
             }
             "setAutoReverseAnimation" -> {
                 val reverse = args["reverse"] as Boolean
@@ -129,12 +143,16 @@ class LottieView internal constructor(
                 } else {
                     animationView.repeatMode = LottieDrawable.RESTART
                 }
+                result.success(null)
             }
             "setAnimationProgress" -> {
-                animationView.pauseAnimation() // TODO Make sure its consistent with iOS
                 animationView.progress = (args["progress"] as Double).toFloat()
+                result.success(null)
             }
-            "setProgressWithFrame" -> animationView.frame = args["progress"] as Int
+            "setProgressWithFrame" -> {
+                animationView.frame = args["progress"] as Int
+                result.success(null)
+            }
             "isAnimationPlaying" -> result.success(animationView.isAnimating)
             "getAnimationDuration" -> result.success(animationView.duration.toDouble())
             "getAnimationProgress" -> result.success(animationView.progress.toDouble())
@@ -146,6 +164,7 @@ class LottieView internal constructor(
                 val keyPath = args["keyPath"] as String
                 val type = args["type"] as String
                 setValue(type, value, keyPath)
+                result.success(null)
             }
             else -> result.notImplemented()
         }
