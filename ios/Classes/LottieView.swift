@@ -9,29 +9,27 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
     let frame: CGRect
     let viewId: Int64
     let registrar: FlutterPluginRegistrar
-    var animationView: LottieAnimationView?
+    let animationView: LottieAnimationView
     var eventSink: FlutterEventSink?
-    
+
     init(_ frame: CGRect, viewId: Int64, args: Any?, registrar: FlutterPluginRegistrar) {
         self.frame = frame
         self.viewId = viewId
         self.registrar = registrar
-
+        self.animationView = LottieAnimationView(frame: frame)
         super.init()
-
         create(args: args)
     }
 
     func create(args: Any?) {
         let channel = FlutterMethodChannel(
-            name: "de.lotum/lottie_native_" + String(viewId),
+            name: "de.lotum/lottie_native_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
-        let handler: FlutterMethodCallHandler = methodCall
-        channel.setMethodCallHandler(handler)
+        channel.setMethodCallHandler(methodCall)
 
         let testChannel = FlutterEventChannel(
-            name: "de.lotum/lottie_native_stream_play_finished_" + String(viewId),
+            name: "de.lotum/lottie_native_stream_play_finished_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
         testChannel.setStreamHandler(self)
@@ -43,45 +41,43 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             let loop = argsDict["loop"] as? Bool ?? false
             let reverse = argsDict["reverse"] as? Bool ?? false
             let autoPlay = argsDict["autoPlay"] as? Bool ?? false
-            
+
+            animationView.contentMode = .scaleAspectFit
+
+            if loop {
+                animationView.loopMode = LottieLoopMode.loop
+            }
+            if reverse {
+                animationView.loopMode = LottieLoopMode.autoReverse
+            }
+
             if url != nil {
-                animationView = LottieAnimationView(
+                LottieAnimation.loadedFrom(
                     url: URL(string: url!)!,
-                    imageProvider: nil,
-                    closure: { error in
-                        if autoPlay && error == nil {
-                            self.animationView!.play(completion: self.completionBlock)
+                    closure: { animation in
+                        self.animationView.animation = animation
+                        if autoPlay && animation != nil {
+                            self.animationView.play(completion: self.completionBlock)
                         }
                     },
                     animationCache: nil
                 )
             } else if filePath != nil {
-                print("THIS IS THE ID " + String(viewId) + " " + filePath!)
                 let key = registrar.lookupKey(forAsset: filePath!)
                 let path = Bundle.main.path(forResource: key, ofType: nil)
-                animationView = LottieAnimationView(filePath: path!)
+                animationView.animation = LottieAnimation.filepath(path!)
             } else if json != nil {
-                let data = Data(json!.utf8)
-                let animation = try? JSONDecoder().decode(LottieAnimation.self, from: data)
-                animationView = LottieAnimationView(animation: animation)
+                animationView.animation = try? LottieAnimation.from(data: Data(json!.utf8))
             }
 
-            animationView!.contentMode = .scaleAspectFit
-
-            if loop {
-                animationView!.loopMode = LottieLoopMode.loop
-            }
-            if reverse {
-                animationView!.loopMode = LottieLoopMode.autoReverse
-            }
             if autoPlay {
-                animationView!.play(completion: completionBlock)
+                animationView.play(completion: completionBlock)
             }
         }
     }
 
     public func view() -> UIView {
-        return animationView!
+        return animationView
     }
 
     public func completionBlock(animationFinished: Bool) {
@@ -91,115 +87,101 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
     }
 
     func methodCall(call: FlutterMethodCall, result: FlutterResult) {
-        var props = [String: Any]()
+        let props = call.arguments as? [String: Any] ?? [String: Any]()
 
-        if let args = call.arguments as? [String: Any] {
-            props = args
-        }
-
-        if call.method == "play" {
-            animationView?.currentProgress = 0
-            animationView?.play(completion: completionBlock)
-        }
-
-        if call.method == "resume" {
-            animationView?.play(completion: completionBlock)
-        }
-
-        if call.method == "playWithProgress" {
+        switch call.method {
+        case "play":
+            animationView.currentProgress = 0
+            animationView.play(completion: completionBlock)
+            result(nil)
+            break
+        case "resume":
+            animationView.play(completion: completionBlock)
+            result(nil)
+            break
+        case "playWithProgress":
             let toProgress = props["toProgress"] as! CGFloat
             if let fromProgress = props["fromProgress"] as? CGFloat {
-                animationView?.play(fromProgress: fromProgress, toProgress: toProgress,
+                animationView.play(fromProgress: fromProgress, toProgress: toProgress,
                                     completion: completionBlock)
             } else {
-                animationView?.play(toProgress: toProgress,
+                animationView.play(toProgress: toProgress,
                                     completion: completionBlock)
             }
-        }
-
-        if call.method == "playWithFrames" {
+            result(nil)
+            break
+        case "playWithFrames":
             let toFrame = props["toFrame"] as! NSNumber
             if let fromFrame = props["fromFrame"] as? NSNumber {
-                animationView?.play(
+                animationView.play(
                     fromFrame: fromFrame as? AnimationFrameTime,
                     toFrame: AnimationFrameTime(truncating: toFrame),
                     completion: completionBlock
                 )
             } else {
-                animationView?.play(
+                animationView.play(
                     toFrame: AnimationFrameTime(truncating: toFrame),
                     completion: completionBlock
                 )
             }
-        }
-
-        if call.method == "stop" {
-            animationView?.stop()
-        }
-
-        if call.method == "pause" {
-            animationView?.pause()
-        }
-
-        if call.method == "setAnimationSpeed" {
-            animationView?.animationSpeed = props["speed"] as! CGFloat
-        }
-
-        if call.method == "setLoopAnimation" {
-            animationView?.loopMode = props["loop"] as! LottieLoopMode
-        }
-
-        if call.method == "setAutoReverseAnimation" {
-            animationView?.loopMode = props["reverse"] as! LottieLoopMode
-        }
-
-        if call.method == "setAnimationProgress" {
-            animationView?.currentProgress = props["progress"] as! CGFloat
-        }
-
-        if call.method == "setProgressWithFrame" {
+            result(nil)
+            break
+        case "stop":
+            animationView.stop()
+            result(nil)
+            break
+        case "pause":
+            animationView.pause()
+            result(nil)
+            break
+        case "setAnimationSpeed":
+            animationView.animationSpeed = props["speed"] as! CGFloat
+            result(nil)
+            break
+        case "setLoopAnimation":
+            animationView.loopMode = props["loop"] as! LottieLoopMode
+            result(nil)
+            break
+        case "setAutoReverseAnimation":
+            animationView.loopMode = props["reverse"] as! LottieLoopMode
+            result(nil)
+            break
+        case "setAnimationProgress":
+            animationView.currentProgress = props["progress"] as! CGFloat
+            result(nil)
+            break
+        case "setProgressWithFrame":
             let frame = props["frame"] as! NSNumber
-            animationView?.currentProgress = AnimationProgressTime(truncating: frame)
-//         self.animationView?.setProgressWithFrame(frame)
-        }
-
-        if call.method == "isAnimationPlaying" {
-            let isAnimationPlaying = animationView?.isAnimationPlaying
-            result(isAnimationPlaying)
-        }
-
-        if call.method == "getAnimationDuration" {
-//         let animationDuration = self.animationView?.animationDuration
-//        let animationDuration = self.animationView?.frame
-//         result(1000)
-        }
-
-        if call.method == "getAnimationProgress" {
-            let currentProgress = animationView?.currentProgress
-            result(currentProgress)
-        }
-
-        if call.method == "getAnimationSpeed" {
-            let animationSpeed = animationView?.animationSpeed
-            result(animationSpeed)
-        }
-
-        if call.method == "getLoopAnimation" {
-            let loopMode = animationView?.loopMode
-            result(loopMode)
-        }
-
-        if call.method == "getAutoReverseAnimation" {
-            let loopMode = animationView?.loopMode
-            result(loopMode)
-        }
-
-        if call.method == "setValue" {
+            animationView.currentProgress = AnimationProgressTime(truncating: frame)
+            result(nil)
+            break
+        case "isAnimationPlaying":
+            result(animationView.isAnimationPlaying)
+        case "getAnimationDuration":
+            result(animationView.animation!.duration)
+            break
+        case "getAnimationProgress":
+            result(animationView.currentProgress)
+            break
+        case "getAnimationSpeed":
+            result(animationView.animationSpeed)
+            break
+        case "getLoopAnimation":
+            result(animationView.loopMode)
+            break
+        case "getAutoReverseAnimation":
+            result(animationView.loopMode)
+            break
+        case "setValue":
             let value = props["value"] as! String
             let keyPath = props["keyPath"] as! String
-            if let type = props["type"] as? String {
-                setValue(type: type, value: value, keyPath: keyPath)
-            }
+            let type = props["type"] as! String
+            setValue(type: type, value: value, keyPath: keyPath)
+            result(nil)
+            break
+        default:
+            result(FlutterMethodNotImplemented)
+            break
         }
     }
 
@@ -221,12 +203,12 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             let hexColor = UInt32(value.dropFirst(2), radix: 16)
             let value = ColorValueProvider(hexToColor(hex8: hexColor!))
             let keypath = AnimationKeypath(keypath: keyPath + ".Color")
-            animationView!.setValueProvider(value, keypath: keypath)
+            animationView.setValueProvider(value, keypath: keypath)
         case "LOTOpacityValue":
             let number = NumberFormatter().number(from: value)!
             let value = FloatValueProvider(CGFloat(truncating: number) * 100)
             let keypath = AnimationKeypath(keypath: keyPath + ".Opacity")
-            animationView!.setValueProvider(value, keypath: keypath)
+            animationView.setValueProvider(value, keypath: keypath)
         default:
             break
         }
