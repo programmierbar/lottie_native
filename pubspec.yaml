@@ -1,8 +1,8 @@
 name: lottie_native
 description: Render lottie animations, using the native platform libraries.
 version: 0.1.0
-repository: https://github.com/lotum/lottie_native
-issue_tracker: https://github.com/lotum/lottie_native/issues
+repository: https://github.com/programmierbar/lottie_native
+issue_tracker: https://github.com/programmierbar/lottie_native/issues
 
 environment:
   sdk: ^2.19.0
