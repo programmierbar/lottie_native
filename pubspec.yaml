@@ -5,7 +5,7 @@ repository: https://github.com/programmierbar/lottie_native
 issue_tracker: https://github.com/programmierbar/lottie_native/issues
 
 environment:
-  sdk: ^2.19.0
+  sdk: ^3.0.0
   flutter: '>=3.7.0'
 
 dependencies:
