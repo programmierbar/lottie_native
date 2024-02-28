@@ -1,3 +1,8 @@
+## 0.1.2
+
+ - **FEAT**: Update lottie android dependency to 6.3.0. ([53dc3eac](https://github.com/lotum/lottie_native/commit/53dc3eac984082b7a1d35d4356776a53d78282cf))
+ - **FEAT**: Update lottie ios dependency to 4.4.1. ([1ef3b598](https://github.com/lotum/lottie_native/commit/1ef3b598117d9f335e3a3bf585c56886b9f44b0f))
+
 ## 0.1.1
 
  - **FEAT**: upgrade iOS Lottie SDK to 4.3.4. ([3306e209](https://github.com/lotum/lottie_native/commit/3306e20919f85465362be6d5c25d050796c0f0da))
