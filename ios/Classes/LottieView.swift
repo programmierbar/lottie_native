@@ -28,11 +28,11 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         )
         channel.setMethodCallHandler(methodCall)
 
-        let testChannel = FlutterEventChannel(
-            name: "de.lotum/lottie_native_stream_play_finished_\(viewId)",
+        let eventChannel = FlutterEventChannel(
+            name: "de.lotum/lottie_native_stream_state_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
-        testChannel.setStreamHandler(self)
+        eventChannel.setStreamHandler(self)
 
         if let argsDict = args as? [String: Any] {
             let url = argsDict["url"] as? String ?? nil
@@ -57,7 +57,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                     closure: { animation in
                         self.animationView.animation = animation
                         if autoPlay && animation != nil {
-                            self.animationView.play(completion: self.completionBlock)
+                            self.animationView.play(completion: self.animationFinished)
                         }
                     },
                     animationCache: nil
@@ -71,7 +71,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             }
 
             if autoPlay {
-                animationView.play(completion: completionBlock)
+                animationView.play(completion: animationFinished)
             }
         }
     }
@@ -80,9 +80,9 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         return animationView
     }
 
-    public func completionBlock(animationFinished: Bool) {
+    public func animationFinished(finished: Bool) {
         if let eventSink = eventSink {
-            eventSink(animationFinished)
+            eventSink(finished ? "finished" : "cancelled")
         }
     }
 
@@ -92,21 +92,21 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         switch call.method {
         case "play":
             animationView.currentProgress = 0
-            animationView.play(completion: completionBlock)
+            animationView.play(completion: animationFinished)
             result(nil)
             break
         case "resume":
-            animationView.play(completion: completionBlock)
+            animationView.play(completion: animationFinished)
             result(nil)
             break
         case "playWithProgress":
             let toProgress = props["toProgress"] as! CGFloat
             if let fromProgress = props["fromProgress"] as? CGFloat {
                 animationView.play(fromProgress: fromProgress, toProgress: toProgress,
-                                    completion: completionBlock)
+                                    completion: animationFinished)
             } else {
                 animationView.play(toProgress: toProgress,
-                                    completion: completionBlock)
+                                    completion: animationFinished)
             }
             result(nil)
             break
@@ -116,12 +116,12 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                 animationView.play(
                     fromFrame: fromFrame as? AnimationFrameTime,
                     toFrame: AnimationFrameTime(truncating: toFrame),
-                    completion: completionBlock
+                    completion: animationFinished
                 )
             } else {
                 animationView.play(
                     toFrame: AnimationFrameTime(truncating: toFrame),
-                    completion: completionBlock
+                    completion: animationFinished
                 )
             }
             result(nil)

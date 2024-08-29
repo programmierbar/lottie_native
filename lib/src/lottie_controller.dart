@@ -4,16 +4,22 @@ import 'package:flutter/services.dart';
 
 import 'lot_values/lot_value.dart';
 
+enum LottieAnimationState {
+  loaded,
+  started,
+  finished,
+  cancelled,
+}
+
 class LottieController {
   late int id;
   late MethodChannel _channel;
-  late EventChannel _playFinished;
+  late EventChannel _stateChannel;
 
   LottieController(int id) {
     this.id = id;
     _channel = new MethodChannel('de.lotum/lottie_native_$id');
-    _playFinished =
-        EventChannel('de.lotum/lottie_native_stream_play_finished_$id');
+    _stateChannel = EventChannel('de.lotum/lottie_native_state_$id');
   }
 
   Future<void> setLoopAnimation(bool loop) async {
@@ -21,8 +27,7 @@ class LottieController {
   }
 
   Future<void> setAutoReverseAnimation(bool reverse) async {
-    return _channel
-        .invokeMethod('setAutoReverseAnimation', {"reverse": reverse});
+    return _channel.invokeMethod('setAutoReverseAnimation', {"reverse": reverse});
   }
 
   Future<void> play() async {
@@ -59,13 +64,11 @@ class LottieController {
   }
 
   Future<void> setAnimationSpeed(double speed) async {
-    return _channel
-        .invokeMethod('setAnimationSpeed', {"speed": speed.clamp(0.0, 1.0)});
+    return _channel.invokeMethod('setAnimationSpeed', {"speed": speed.clamp(0.0, 1.0)});
   }
 
   Future<void> setAnimationProgress(double progress) async {
-    return _channel.invokeMethod(
-        'setAnimationProgress', {"progress": progress.clamp(0.0, 1.0)});
+    return _channel.invokeMethod('setAnimationProgress', {"progress": progress.clamp(0.0, 1.0)});
   }
 
   Future<void> setProgressWithFrame(int frame) async {
@@ -108,8 +111,12 @@ class LottieController {
   }
 
   Stream<bool> get onPlayFinished {
-    var animationFinished =
-        _playFinished.receiveBroadcastStream().map<bool>((element) => element);
-    return animationFinished;
+    return onStateChanged
+        .where((state) => state == LottieAnimationState.finished || state == LottieAnimationState.cancelled)
+        .map((state) => state == LottieAnimationState.finished);
+  }
+
+  Stream<LottieAnimationState> get onStateChanged {
+    return _stateChannel.receiveBroadcastStream().map((value) => LottieAnimationState.values.byName(value));
   }
 }

@@ -7,7 +7,9 @@ import android.graphics.Color
 import android.view.View
 import android.widget.ImageView
 import com.airbnb.lottie.LottieAnimationView
+import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.LottieDrawable
+import com.airbnb.lottie.LottieOnCompositionLoadedListener
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
 import com.airbnb.lottie.value.LottieValueCallback
@@ -27,18 +29,18 @@ class LottieView internal constructor(
         id: Int,
         args: Any,
         binaryMessenger: BinaryMessenger,
-) : PlatformView, MethodCallHandler, EventChannel.StreamHandler, AnimatorListener {
+) : PlatformView, MethodCallHandler, EventChannel.StreamHandler, AnimatorListener, LottieOnCompositionLoadedListener {
     private val animationView: LottieAnimationView = LottieAnimationView(context)
     private val channel = MethodChannel(binaryMessenger, "de.lotum/lottie_native_$id")
-    private val onPlaybackFinishedEventChannel = EventChannel(binaryMessenger, "de.lotum/lottie_native_stream_play_finished_$id")
-    private var onPlaybackFinishedEventSink: EventSink? = null
+    private val onStateChangeEventChannel = EventChannel(binaryMessenger, "de.lotum/lottie_native_state_$id")
+    private var onStateChangeEventSink: EventSink? = null
     private var maxFrame = 0f
 
     init {
         animationView.scaleType = ImageView.ScaleType.CENTER_INSIDE
 
         channel.setMethodCallHandler(this)
-        onPlaybackFinishedEventChannel.setStreamHandler(this)
+        onStateChangeEventChannel.setStreamHandler(this)
 
         @Suppress("UNCHECKED_CAST", "NAME_SHADOWING") val args = args as Map<String, Any?>
 
@@ -69,7 +71,9 @@ class LottieView internal constructor(
         if (autoPlay) {
             animationView.playAnimation()
         }
+
         animationView.addAnimatorListener(this)
+        animationView.addLottieOnCompositionLoadedListener(this);
     }
 
     override fun getView(): View {
@@ -79,7 +83,7 @@ class LottieView internal constructor(
     override fun dispose() {
         animationView.cancelAnimation()
         channel.setMethodCallHandler(null)
-        onPlaybackFinishedEventChannel.setStreamHandler(null)
+        onStateChangeEventChannel.setStreamHandler(null)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -171,19 +175,25 @@ class LottieView internal constructor(
     }
 
     override fun onListen(o: Any?, eventSink: EventSink) {
-        onPlaybackFinishedEventSink = eventSink
+        onStateChangeEventSink = eventSink
     }
 
     override fun onCancel(o: Any?) {}
 
-    override fun onAnimationStart(animation: Animator) {}
+    override fun onCompositionLoaded(composition: LottieComposition?) {
+        onStateChangeEventSink?.success("loaded")
+    }
+
+    override fun onAnimationStart(animation: Animator) {
+        onStateChangeEventSink?.success("started")
+    }
 
     override fun onAnimationEnd(animation: Animator) {
-        onPlaybackFinishedEventSink?.success(true)
+        onStateChangeEventSink?.success("finished")
     }
 
     override fun onAnimationCancel(animation: Animator) {
-        onPlaybackFinishedEventSink?.success(false)
+        onStateChangeEventSink?.success("cancelled")
     }
 
     override fun onAnimationRepeat(animation: Animator) {}
