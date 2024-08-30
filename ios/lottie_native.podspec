@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.dependency 'Flutter'
   s.dependency 'lottie-ios', '~> 4.4.3'
 
-  s.platform            = :ios, '11.0'
+  s.platform            = :ios, '13.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version       = '5.0'
 end

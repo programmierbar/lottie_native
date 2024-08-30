@@ -29,7 +29,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         channel.setMethodCallHandler(methodCall)
 
         let eventChannel = FlutterEventChannel(
-            name: "de.lotum/lottie_native_stream_state_\(viewId)",
+            name: "de.lotum/lottie_native_state_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
         eventChannel.setStreamHandler(self)
@@ -57,7 +57,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                     closure: { animation in
                         self.animationView.animation = animation
                         if autoPlay && animation != nil {
-                            self.animationView.play(completion: self.animationFinished)
+                            self.playAnimation()
                         }
                     },
                     animationCache: nil
@@ -71,18 +71,31 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             }
 
             if autoPlay {
-                animationView.play(completion: animationFinished)
+                playAnimation()
             }
+        }
+        
+        animationView.animationLoaded = { animationView, animation in
+            self.updateState(state: "loaded")
         }
     }
 
     public func view() -> UIView {
         return animationView
     }
+    
+    private func playAnimation() {
+        animationView.play(completion: animationFinished)
+        updateState(state: "started")
+    }
 
-    public func animationFinished(finished: Bool) {
+    private func animationFinished(finished: Bool) {
+        updateState(state: finished ? "finished" : "cancelled")
+    }
+    
+    private func updateState(state: String) {
         if let eventSink = eventSink {
-            eventSink(finished ? "finished" : "cancelled")
+            eventSink(state)
         }
     }
 
@@ -92,11 +105,11 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         switch call.method {
         case "play":
             animationView.currentProgress = 0
-            animationView.play(completion: animationFinished)
+            playAnimation()
             result(nil)
             break
         case "resume":
-            animationView.play(completion: animationFinished)
+            playAnimation()
             result(nil)
             break
         case "playWithProgress":
@@ -109,6 +122,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                                     completion: animationFinished)
             }
             result(nil)
+            updateState(state: "started")
             break
         case "playWithFrames":
             let toFrame = props["toFrame"] as! NSNumber
@@ -125,6 +139,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                 )
             }
             result(nil)
+            updateState(state: "started")
             break
         case "stop":
             animationView.stop()

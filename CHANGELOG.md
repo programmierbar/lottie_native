@@ -1,3 +1,7 @@
+## 0.1.4
+
+ - **FEAT**: Provide animation state changes as stream to lottie controller
+
 ## 0.1.3
 
  - **FEAT**: Update lottie ios dependency to 4.4.3. ([ff28c637](https://github.com/lotum/lottie_native/commit/ff28c63772b4b720538f8b37adf4374de76ae959))
