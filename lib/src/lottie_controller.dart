@@ -27,7 +27,8 @@ class LottieController {
   }
 
   Future<void> setAutoReverseAnimation(bool reverse) async {
-    return _channel.invokeMethod('setAutoReverseAnimation', {"reverse": reverse});
+    return _channel
+        .invokeMethod('setAutoReverseAnimation', {"reverse": reverse});
   }
 
   Future<void> play() async {
@@ -64,11 +65,13 @@ class LottieController {
   }
 
   Future<void> setAnimationSpeed(double speed) async {
-    return _channel.invokeMethod('setAnimationSpeed', {"speed": speed.clamp(0.0, 1.0)});
+    return _channel
+        .invokeMethod('setAnimationSpeed', {"speed": speed.clamp(0.0, 1.0)});
   }
 
   Future<void> setAnimationProgress(double progress) async {
-    return _channel.invokeMethod('setAnimationProgress', {"progress": progress.clamp(0.0, 1.0)});
+    return _channel.invokeMethod(
+        'setAnimationProgress', {"progress": progress.clamp(0.0, 1.0)});
   }
 
   Future<void> setProgressWithFrame(int frame) async {
@@ -112,11 +115,15 @@ class LottieController {
 
   Stream<bool> get onPlayFinished {
     return onStateChanged
-        .where((state) => state == LottieAnimationState.finished || state == LottieAnimationState.cancelled)
+        .where((state) =>
+            state == LottieAnimationState.finished ||
+            state == LottieAnimationState.cancelled)
         .map((state) => state == LottieAnimationState.finished);
   }
 
   Stream<LottieAnimationState> get onStateChanged {
-    return _stateChannel.receiveBroadcastStream().map((value) => LottieAnimationState.values.byName(value));
+    return _stateChannel
+        .receiveBroadcastStream()
+        .map((value) => LottieAnimationState.values.byName(value));
   }
 }
