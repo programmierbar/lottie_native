@@ -84,7 +84,7 @@ class _LottieViewState extends State<LottieView> {
             );
           },
           onCreatePlatformView: (params) {
-            return PlatformViewsService.initExpensiveAndroidView(
+            return PlatformViewsService.initSurfaceAndroidView(
               id: params.id,
               viewType: viewType,
               layoutDirection: TextDirection.ltr,
