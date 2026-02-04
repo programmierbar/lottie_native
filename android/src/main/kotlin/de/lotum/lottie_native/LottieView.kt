@@ -38,6 +38,9 @@ class LottieView internal constructor(
 
     init {
         animationView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        animationView.setFailureListener {
+            Log.e("lottie_native", "Failed to load animation.", it)
+        }
 
         channel.setMethodCallHandler(this)
         onStateChangeEventChannel.setStreamHandler(this)
@@ -45,9 +48,6 @@ class LottieView internal constructor(
         @Suppress("UNCHECKED_CAST", "NAME_SHADOWING") val args = args as Map<String, Any?>
 
         if (args["url"] != null) {
-            animationView.setFailureListener {
-                Log.e("lottie_native", "Failed to set animation from URL.", it)
-            }
             animationView.setAnimationFromUrl(args["url"] as String)
         }
         if (args["filePath"] != null) {
