@@ -112,9 +112,14 @@ class _MyAppState extends State<MyApp> {
   void onViewCreated(LottieController controller) {
     this.controller = controller;
 
-    // Listen for when the playback completes
-    controller.onPlayFinished.listen((bool animationFinished) {
-      print("Playback complete. Was Animation Finished? $animationFinished");
+    // Listen for all state changes (loaded, started, finished, cancelled)
+    controller.onStateChanged.listen((state) {
+      print("Animation state changed: $state");
+      if (state == LottieAnimationState.finished) {
+        print("Playback complete. Was Animation Finished? true");
+      } else if (state == LottieAnimationState.cancelled) {
+        print("Playback complete. Was Animation Finished? false");
+      }
     });
   }
 
