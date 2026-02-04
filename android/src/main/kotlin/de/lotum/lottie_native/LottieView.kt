@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Color
 import android.view.View
 import android.widget.ImageView
+import com.airbnb.lottie.AsyncUpdates
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.LottieDrawable
@@ -38,6 +39,7 @@ class LottieView internal constructor(
 
     init {
         animationView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        animationView.setAsyncUpdates(AsyncUpdates.ENABLED)
         animationView.setFailureListener {
             Log.e("lottie_native", "Failed to load animation.", it)
         }
