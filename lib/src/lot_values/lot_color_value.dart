@@ -14,7 +14,7 @@ class LOTColorValue extends LOTValue {
   }
 
   String get value {
-    return '0x${_value.value.toRadixString(16).padLeft(8, '0')}';
+    return '0x${_value.toARGB32().toRadixString(16).padLeft(8, '0')}';
   }
 
   String get type {
