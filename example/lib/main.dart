@@ -69,6 +69,28 @@ class _MyAppState extends State<MyApp> {
                     controller?.resume();
                   },
                 ),
+                TextButton(
+                  child: Text("Swap to Hamburger (URL)"),
+                  onPressed: () {
+                    controller?.setAnimationFromUrl(
+                      'https://raw.githubusercontent.com/airbnb/lottie-ios/master/Tests/Samples/HamburgerArrow.json',
+                    );
+                  },
+                ),
+                TextButton(
+                  child: Text("Swap to Watermelon (URL)"),
+                  onPressed: () {
+                    controller?.setAnimationFromUrl(
+                      'https://raw.githubusercontent.com/airbnb/lottie-ios/master/Tests/Samples/Watermelon.json',
+                    );
+                  },
+                ),
+                TextButton(
+                  child: Text("Swap to Asset"),
+                  onPressed: () {
+                    controller?.setAnimationFromAsset('animations/newAnimation.json');
+                  },
+                ),
                 Text("From File"),
                 Container(
                   child: SizedBox(
