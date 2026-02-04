@@ -88,7 +88,8 @@ class _MyAppState extends State<MyApp> {
                 TextButton(
                   child: Text("Swap to Asset"),
                   onPressed: () {
-                    controller?.setAnimationFromAsset('animations/newAnimation.json');
+                    controller
+                        ?.setAnimationFromAsset('animations/newAnimation.json');
                   },
                 ),
                 Text("From File"),

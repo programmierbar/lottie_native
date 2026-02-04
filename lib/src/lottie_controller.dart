@@ -69,7 +69,8 @@ class LottieController {
   }
 
   Future<void> setAnimationFromAsset(String filePath) async {
-    return _channel.invokeMethod('setAnimationFromAsset', {"filePath": filePath});
+    return _channel
+        .invokeMethod('setAnimationFromAsset', {"filePath": filePath});
   }
 
   Future<void> setAnimationFromJson(String json) async {
