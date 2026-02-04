@@ -20,10 +20,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/lottie_native/ios"
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   lottie-ios: fcb5e73e17ba4c983140b7d21095c834b3087418
-  lottie_native: d7625e69e3104fa40a333ab2ed9ae77409b2777e
+  lottie_native: 4f3a9ef106799160946396cf50746ad169211e23
 
 PODFILE CHECKSUM: d2243213672c3c48aae53c36642ba411a6be7309
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
