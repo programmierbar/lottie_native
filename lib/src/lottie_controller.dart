@@ -64,6 +64,18 @@ class LottieController {
     return _channel.invokeMethod('resume');
   }
 
+  Future<void> setAnimationFromUrl(String url) async {
+    return _channel.invokeMethod('setAnimationFromUrl', {"url": url});
+  }
+
+  Future<void> setAnimationFromAsset(String filePath) async {
+    return _channel.invokeMethod('setAnimationFromAsset', {"filePath": filePath});
+  }
+
+  Future<void> setAnimationFromJson(String json) async {
+    return _channel.invokeMethod('setAnimationFromJson', {"json": json});
+  }
+
   Future<void> setAnimationSpeed(double speed) async {
     return _channel
         .invokeMethod('setAnimationSpeed', {"speed": speed.clamp(0.0, 1.0)});

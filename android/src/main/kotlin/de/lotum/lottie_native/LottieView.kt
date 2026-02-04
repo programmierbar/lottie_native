@@ -170,6 +170,26 @@ class LottieView internal constructor(
                 setValue(type, value, keyPath)
                 result.success(null)
             }
+            "setAnimationFromUrl" -> {
+                animationView.cancelAnimation()
+                animationView.progress = 0f
+                animationView.setAnimationFromUrl(args["url"] as String)
+                result.success(null)
+            }
+            "setAnimationFromAsset" -> {
+                animationView.cancelAnimation()
+                animationView.progress = 0f
+                val loader = FlutterInjector.instance().flutterLoader()
+                val key = loader.getLookupKeyForAsset(args["filePath"] as String)
+                animationView.setAnimation(key)
+                result.success(null)
+            }
+            "setAnimationFromJson" -> {
+                animationView.cancelAnimation()
+                animationView.progress = 0f
+                animationView.setAnimationFromJson(args["json"] as String, null)
+                result.success(null)
+            }
             else -> result.notImplemented()
         }
     }
@@ -181,6 +201,7 @@ class LottieView internal constructor(
     override fun onCancel(o: Any?) {}
 
     override fun onCompositionLoaded(composition: LottieComposition?) {
+        maxFrame = composition?.endFrame ?: 0f
         onStateChangeEventSink?.success("loaded")
     }
 

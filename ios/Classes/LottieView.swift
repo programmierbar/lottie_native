@@ -194,6 +194,34 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             setValue(type: type, value: value, keyPath: keyPath)
             result(nil)
             break
+        case "setAnimationFromUrl":
+            animationView.stop()
+            animationView.currentProgress = 0
+            let url = props["url"] as! String
+            LottieAnimation.loadedFrom(url: URL(string: url)!, closure: { animation in
+                self.animationView.animation = animation
+                self.updateState(state: "loaded")
+            }, animationCache: nil)
+            result(nil)
+            break
+        case "setAnimationFromAsset":
+            animationView.stop()
+            animationView.currentProgress = 0
+            let filePath = props["filePath"] as! String
+            let key = registrar.lookupKey(forAsset: filePath)
+            let path = Bundle.main.path(forResource: key, ofType: nil)
+            animationView.animation = LottieAnimation.filepath(path!)
+            updateState(state: "loaded")
+            result(nil)
+            break
+        case "setAnimationFromJson":
+            animationView.stop()
+            animationView.currentProgress = 0
+            let json = props["json"] as! String
+            animationView.animation = try? LottieAnimation.from(data: Data(json.utf8))
+            updateState(state: "loaded")
+            result(nil)
+            break
         default:
             result(FlutterMethodNotImplemented)
             break
