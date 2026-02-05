@@ -40,6 +40,7 @@ class LottieView internal constructor(
     init {
         animationView.scaleType = ImageView.ScaleType.CENTER_INSIDE
         animationView.setAsyncUpdates(AsyncUpdates.ENABLED)
+        animationView.setClipToCompositionBounds(true)
         animationView.setFailureListener {
             Log.e("lottie_native", "Failed to load animation.", it)
         }
