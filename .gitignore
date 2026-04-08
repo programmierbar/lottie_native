@@ -23,3 +23,4 @@ build/
 example/ios/Flutter/Flutter.podspec
 flutter_export_environment.sh
 pubspec.lock
+pubspec_overrides.yaml
