@@ -147,10 +147,16 @@ class LottieView internal constructor(
                 result.success(null)
             }
             "setAnimationProgress" -> {
+                // Android keeps advancing after a progress seek if playback is still active.
+                // iOS' currentProgress setter already leaves the animation at the requested frame,
+                // so we only need to pause explicitly on Android to keep the API behavior aligned.
+                animationView.pauseAnimation()
                 animationView.progress = (args["progress"] as Double).toFloat()
                 result.success(null)
             }
             "setProgressWithFrame" -> {
+                // Apply the same alignment for frame-based updates.
+                animationView.pauseAnimation()
                 animationView.frame = args["progress"] as Int
                 result.success(null)
             }
