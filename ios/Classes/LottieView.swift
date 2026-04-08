@@ -11,6 +11,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
     let registrar: FlutterPluginRegistrar
     let animationView: LottieAnimationView
     var eventSink: FlutterEventSink?
+    private var animationLoadToken = 0
 
     init(_ frame: CGRect, viewId: Int64, args: Any?, registrar: FlutterPluginRegistrar) {
         self.frame = frame
@@ -51,27 +52,12 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
                 animationView.loopMode = LottieLoopMode.autoReverse
             }
 
-            if url != nil {
-                LottieAnimation.loadedFrom(
-                    url: URL(string: url!)!,
-                    closure: { animation in
-                        self.animationView.animation = animation
-                        if autoPlay && animation != nil {
-                            self.playAnimation()
-                        }
-                    },
-                    animationCache: nil
-                )
-            } else if filePath != nil {
-                let key = registrar.lookupKey(forAsset: filePath!)
-                let path = Bundle.main.path(forResource: key, ofType: nil)
-                animationView.animation = LottieAnimation.filepath(path!)
-            } else if json != nil {
-                animationView.animation = try? LottieAnimation.from(data: Data(json!.utf8))
-            }
-
-            if autoPlay {
-                playAnimation()
+            if let url, let resolvedUrl = URL(string: url) {
+                loadAnimationFromUrl(resolvedUrl, autoPlay: autoPlay)
+            } else if let filePath {
+                _ = loadAnimationFromAsset(filePath, autoPlay: autoPlay)
+            } else if let json {
+                _ = loadAnimationFromJson(json, autoPlay: autoPlay)
             }
         }
         
@@ -99,7 +85,7 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         }
     }
 
-    func methodCall(call: FlutterMethodCall, result: FlutterResult) {
+    func methodCall(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let props = call.arguments as? [String: Any] ?? [String: Any]()
 
         switch call.method {
@@ -210,32 +196,13 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             }
             break
         case "setAnimationFromUrl":
-            animationView.stop()
-            animationView.currentProgress = 0
-            let url = props["url"] as! String
-            LottieAnimation.loadedFrom(url: URL(string: url)!, closure: { animation in
-                self.animationView.animation = animation
-                self.updateState(state: "loaded")
-            }, animationCache: nil)
-            result(nil)
+            setAnimationFromUrl(props, result: result)
             break
         case "setAnimationFromAsset":
-            animationView.stop()
-            animationView.currentProgress = 0
-            let filePath = props["filePath"] as! String
-            let key = registrar.lookupKey(forAsset: filePath)
-            let path = Bundle.main.path(forResource: key, ofType: nil)
-            animationView.animation = LottieAnimation.filepath(path!)
-            updateState(state: "loaded")
-            result(nil)
+            setAnimationFromAsset(props, result: result)
             break
         case "setAnimationFromJson":
-            animationView.stop()
-            animationView.currentProgress = 0
-            let json = props["json"] as! String
-            animationView.animation = try? LottieAnimation.from(data: Data(json.utf8))
-            updateState(state: "loaded")
-            result(nil)
+            setAnimationFromJson(props, result: result)
             break
         default:
             result(FlutterMethodNotImplemented)
@@ -302,5 +269,181 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         }
 
         return UInt32(value, radix: 16)
+    }
+
+    private func resetAnimationPlayback() {
+        animationView.stop()
+        animationView.currentProgress = 0
+    }
+
+    private func nextAnimationLoadToken() -> Int {
+        animationLoadToken += 1
+        return animationLoadToken
+    }
+
+    private func invalidatePendingAnimationLoads() {
+        _ = nextAnimationLoadToken()
+    }
+
+    private func setAnimationFromUrl(
+        _ props: [String: Any],
+        result: @escaping FlutterResult
+    ) {
+        guard
+            let urlString = props["url"] as? String,
+            let url = URL(string: urlString)
+        else {
+            result(
+                FlutterError(
+                    code: "invalid_arguments",
+                    message: "setAnimationFromUrl expects a valid string url argument.",
+                    details: props
+                )
+            )
+            return
+        }
+
+        resetAnimationPlayback()
+        loadAnimationFromUrl(url, result: result)
+    }
+
+    private func setAnimationFromAsset(
+        _ props: [String: Any],
+        result: FlutterResult
+    ) {
+        guard let filePath = props["filePath"] as? String else {
+            result(
+                FlutterError(
+                    code: "invalid_arguments",
+                    message: "setAnimationFromAsset expects a string filePath argument.",
+                    details: props
+                )
+            )
+            return
+        }
+
+        invalidatePendingAnimationLoads()
+        resetAnimationPlayback()
+        guard loadAnimationFromAsset(filePath) else {
+            result(
+                FlutterError(
+                    code: "animation_load_failed",
+                    message: "Failed to load animation from asset.",
+                    details: filePath
+                )
+            )
+            return
+        }
+
+        result(nil)
+    }
+
+    private func setAnimationFromJson(
+        _ props: [String: Any],
+        result: FlutterResult
+    ) {
+        guard let json = props["json"] as? String else {
+            result(
+                FlutterError(
+                    code: "invalid_arguments",
+                    message: "setAnimationFromJson expects a string json argument.",
+                    details: props
+                )
+            )
+            return
+        }
+
+        invalidatePendingAnimationLoads()
+        resetAnimationPlayback()
+        guard loadAnimationFromJson(json) else {
+            result(
+                FlutterError(
+                    code: "animation_load_failed",
+                    message: "Failed to parse animation JSON.",
+                    details: nil
+                )
+            )
+            return
+        }
+
+        result(nil)
+    }
+
+    private func loadAnimationFromUrl(
+        _ url: URL,
+        autoPlay: Bool = false,
+        result: FlutterResult? = nil
+    ) {
+        let loadToken = nextAnimationLoadToken()
+
+        LottieAnimation.loadedFrom(
+            url: url,
+            closure: { animation in
+                if loadToken != self.animationLoadToken {
+                    result?(nil)
+                    return
+                }
+
+                guard let animation else {
+                    result?(
+                        FlutterError(
+                            code: "animation_load_failed",
+                            message: "Failed to load animation from URL.",
+                            details: url.absoluteString
+                        )
+                    )
+                    return
+                }
+
+                self.animationView.animation = animation
+
+                if autoPlay {
+                    self.playAnimation()
+                }
+
+                result?(nil)
+            },
+            animationCache: nil
+        )
+    }
+
+    @discardableResult
+    private func loadAnimationFromAsset(
+        _ filePath: String,
+        autoPlay: Bool = false
+    ) -> Bool {
+        let key = registrar.lookupKey(forAsset: filePath)
+        guard
+            let path = Bundle.main.path(forResource: key, ofType: nil),
+            let animation = LottieAnimation.filepath(path)
+        else {
+            return false
+        }
+
+        animationView.animation = animation
+
+        if autoPlay {
+            playAnimation()
+        }
+
+        return true
+    }
+
+    @discardableResult
+    private func loadAnimationFromJson(
+        _ json: String,
+        autoPlay: Bool = false
+    ) -> Bool {
+        guard let animation = try? LottieAnimation.from(data: Data(json.utf8)) else {
+            return false
+        }
+
+        animationView.animation = animation
+
+        if autoPlay {
+            playAnimation()
+        }
+
+        return true
     }
 }

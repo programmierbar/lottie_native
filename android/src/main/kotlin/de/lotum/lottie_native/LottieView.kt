@@ -9,6 +9,7 @@ import android.widget.ImageView
 import com.airbnb.lottie.AsyncUpdates
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieComposition
+import com.airbnb.lottie.LottieCompositionFactory
 import com.airbnb.lottie.LottieDrawable
 import com.airbnb.lottie.LottieOnCompositionLoadedListener
 import com.airbnb.lottie.LottieProperty
@@ -36,6 +37,7 @@ class LottieView internal constructor(
     private val onStateChangeEventChannel = EventChannel(binaryMessenger, "de.lotum/lottie_native_state_$id")
     private var onStateChangeEventSink: EventSink? = null
     private var maxFrame = 0f
+    private var animationLoadRequestId = 0
 
     init {
         animationView.scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -47,23 +49,21 @@ class LottieView internal constructor(
 
         channel.setMethodCallHandler(this)
         onStateChangeEventChannel.setStreamHandler(this)
+        animationView.addAnimatorListener(this)
+        animationView.addLottieOnCompositionLoadedListener(this)
 
         @Suppress("UNCHECKED_CAST", "NAME_SHADOWING") val args = args as Map<String, Any?>
-
-        if (args["url"] != null) {
-            animationView.setAnimationFromUrl(args["url"] as String)
-        }
-        if (args["filePath"] != null) {
-            val loader = FlutterInjector.instance().flutterLoader()
-            val key = loader.getLookupKeyForAsset(args["filePath"] as String)
-            animationView.setAnimation(key)
-        }
-        if (args["json"] != null) {
-            animationView.setAnimationFromJson(args["json"] as String, null)
-        }
         val loop: Boolean = if (args["loop"] != null) args["loop"] as Boolean else false
         val reverse: Boolean = if (args["reverse"] != null) args["reverse"] as Boolean else false
         val autoPlay: Boolean = if (args["autoPlay"] != null) args["autoPlay"] as Boolean else false
+
+        if (args["url"] != null) {
+            loadAnimationFromUrl(args["url"] as String, autoPlay = autoPlay)
+        } else if (args["filePath"] != null) {
+            loadAnimationFromAsset(args["filePath"] as String, autoPlay = autoPlay)
+        } else if (args["json"] != null) {
+            loadAnimationFromJson(args["json"] as String, autoPlay = autoPlay)
+        }
         animationView.repeatCount = if (loop) -1 else 0
         maxFrame = animationView.maxFrame
         if (reverse) {
@@ -71,12 +71,6 @@ class LottieView internal constructor(
         } else {
             animationView.repeatMode = LottieDrawable.RESTART
         }
-        if (autoPlay) {
-            animationView.playAnimation()
-        }
-
-        animationView.addAnimatorListener(this)
-        animationView.addLottieOnCompositionLoadedListener(this);
     }
 
     override fun getView(): View {
@@ -187,26 +181,9 @@ class LottieView internal constructor(
                     result.error(error.code, error.message, error.details)
                 }
             }
-            "setAnimationFromUrl" -> {
-                animationView.cancelAnimation()
-                animationView.progress = 0f
-                animationView.setAnimationFromUrl(args["url"] as String)
-                result.success(null)
-            }
-            "setAnimationFromAsset" -> {
-                animationView.cancelAnimation()
-                animationView.progress = 0f
-                val loader = FlutterInjector.instance().flutterLoader()
-                val key = loader.getLookupKeyForAsset(args["filePath"] as String)
-                animationView.setAnimation(key)
-                result.success(null)
-            }
-            "setAnimationFromJson" -> {
-                animationView.cancelAnimation()
-                animationView.progress = 0f
-                animationView.setAnimationFromJson(args["json"] as String, null)
-                result.success(null)
-            }
+            "setAnimationFromUrl" -> setAnimationFromUrl(args, result)
+            "setAnimationFromAsset" -> setAnimationFromAsset(args, result)
+            "setAnimationFromJson" -> setAnimationFromJson(args, result)
             else -> result.notImplemented()
         }
     }
@@ -235,6 +212,137 @@ class LottieView internal constructor(
     }
 
     override fun onAnimationRepeat(animation: Animator) {}
+
+    private fun resetAnimationPlayback() {
+        animationView.cancelAnimation()
+        animationView.progress = 0f
+    }
+
+    private fun nextAnimationLoadRequestId(): Int {
+        animationLoadRequestId += 1
+        return animationLoadRequestId
+    }
+
+    private fun invalidatePendingAnimationLoads() {
+        nextAnimationLoadRequestId()
+    }
+
+    private fun setAnimationFromUrl(args: Map<String, Any?>, result: MethodChannel.Result) {
+        val url = args["url"] as? String
+
+        if (url == null) {
+            result.error(
+                    "invalid_arguments",
+                    "setAnimationFromUrl expects a string url argument.",
+                    args,
+            )
+            return
+        }
+
+        resetAnimationPlayback()
+        loadAnimationFromUrl(url, result = result)
+    }
+
+    private fun setAnimationFromAsset(args: Map<String, Any?>, result: MethodChannel.Result) {
+        val filePath = args["filePath"] as? String
+
+        if (filePath == null) {
+            result.error(
+                    "invalid_arguments",
+                    "setAnimationFromAsset expects a string filePath argument.",
+                    args,
+            )
+            return
+        }
+
+        invalidatePendingAnimationLoads()
+        resetAnimationPlayback()
+        loadAnimationFromAsset(filePath)
+        result.success(null)
+    }
+
+    private fun setAnimationFromJson(args: Map<String, Any?>, result: MethodChannel.Result) {
+        val json = args["json"] as? String
+
+        if (json == null) {
+            result.error(
+                    "invalid_arguments",
+                    "setAnimationFromJson expects a string json argument.",
+                    args,
+            )
+            return
+        }
+
+        invalidatePendingAnimationLoads()
+        resetAnimationPlayback()
+        loadAnimationFromJson(json)
+        result.success(null)
+    }
+
+    private fun loadAnimationFromUrl(
+            url: String,
+            autoPlay: Boolean = false,
+            result: MethodChannel.Result? = null,
+    ) {
+        val requestId = nextAnimationLoadRequestId()
+
+        LottieCompositionFactory.fromUrl(animationView.context, url)
+                .addListener { composition ->
+                    if (requestId != animationLoadRequestId) {
+                        result?.success(null)
+                        return@addListener
+                    }
+
+                    maxFrame = composition.endFrame
+                    animationView.setComposition(composition)
+
+                    if (autoPlay) {
+                        animationView.playAnimation()
+                    }
+
+                    result?.success(null)
+                }
+                .addFailureListener { error ->
+                    if (requestId != animationLoadRequestId) {
+                        result?.success(null)
+                        return@addFailureListener
+                    }
+
+                    Log.e("lottie_native", "Failed to load animation from URL.", error)
+
+                    if (result != null) {
+                        result.error(
+                                "animation_load_failed",
+                                "Failed to load animation from URL.",
+                                error.localizedMessage ?: url,
+                        )
+                    }
+                }
+    }
+
+    private fun loadAnimationFromAsset(
+            filePath: String,
+            autoPlay: Boolean = false,
+    ) {
+        val loader = FlutterInjector.instance().flutterLoader()
+        val key = loader.getLookupKeyForAsset(filePath)
+        animationView.setAnimation(key)
+
+        if (autoPlay) {
+            animationView.playAnimation()
+        }
+    }
+
+    private fun loadAnimationFromJson(
+            json: String,
+            autoPlay: Boolean = false,
+    ) {
+        animationView.setAnimationFromJson(json, null)
+
+        if (autoPlay) {
+            animationView.playAnimation()
+        }
+    }
 
     private fun setValue(type: String, value: String, keyPath: String): MethodCallError? {
         val keyPathSegments = keyPath.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
