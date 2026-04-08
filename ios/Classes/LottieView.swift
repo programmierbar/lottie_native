@@ -188,11 +188,26 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
             result(animationView.loopMode)
             break
         case "setValue":
-            let value = props["value"] as! String
-            let keyPath = props["keyPath"] as! String
-            let type = props["type"] as! String
-            setValue(type: type, value: value, keyPath: keyPath)
-            result(nil)
+            guard
+                let value = props["value"] as? String,
+                let keyPath = props["keyPath"] as? String,
+                let type = props["type"] as? String
+            else {
+                result(
+                    FlutterError(
+                        code: "invalid_arguments",
+                        message: "setValue expects string arguments for value, type, and keyPath.",
+                        details: props
+                    )
+                )
+                return
+            }
+
+            if let error = setValue(type: type, value: value, keyPath: keyPath) {
+                result(error)
+            } else {
+                result(nil)
+            }
             break
         case "setAnimationFromUrl":
             animationView.stop()
@@ -240,20 +255,52 @@ public class LottieView: NSObject, FlutterPlatformView, FlutterStreamHandler {
         return nil
     }
 
-    func setValue(type: String, value: String, keyPath: String) {
+    func setValue(type: String, value: String, keyPath: String) -> FlutterError? {
         switch type {
         case "LOTColorValue":
-            let hexColor = UInt32(value.dropFirst(2), radix: 16)
-            let value = ColorValueProvider(hexToColor(hex8: hexColor!))
+            guard let hexColor = parseColorValue(value) else {
+                return FlutterError(
+                    code: "invalid_color_value",
+                    message: "Expected a color value formatted like 0xff0000ff or #ff0000ff.",
+                    details: value
+                )
+            }
+
+            let valueProvider = ColorValueProvider(hexToColor(hex8: hexColor))
             let keypath = AnimationKeypath(keypath: keyPath + ".Color")
-            animationView.setValueProvider(value, keypath: keypath)
+            animationView.setValueProvider(valueProvider, keypath: keypath)
         case "LOTOpacityValue":
-            let number = NumberFormatter().number(from: value)!
-            let value = FloatValueProvider(CGFloat(truncating: number) * 100)
+            guard let opacity = Double(value) else {
+                return FlutterError(
+                    code: "invalid_opacity_value",
+                    message: "Expected opacity as a decimal string, for example 0.1.",
+                    details: value
+                )
+            }
+
+            let valueProvider = FloatValueProvider(CGFloat(opacity) * 100)
             let keypath = AnimationKeypath(keypath: keyPath + ".Opacity")
-            animationView.setValueProvider(value, keypath: keypath)
+            animationView.setValueProvider(valueProvider, keypath: keypath)
         default:
-            break
+            return FlutterError(
+                code: "unsupported_value_type",
+                message: "Unsupported value type: \(type)",
+                details: type
+            )
         }
+
+        return nil
+    }
+
+    private func parseColorValue(_ value: String) -> UInt32? {
+        if value.hasPrefix("0x") || value.hasPrefix("0X") {
+            return UInt32(value.dropFirst(2), radix: 16)
+        }
+
+        if value.hasPrefix("#") {
+            return UInt32(value.dropFirst(), radix: 16)
+        }
+
+        return UInt32(value, radix: 16)
     }
 }

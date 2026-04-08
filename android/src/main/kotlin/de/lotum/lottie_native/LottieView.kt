@@ -167,11 +167,25 @@ class LottieView internal constructor(
             "getLoopAnimation" -> result.success(animationView.repeatCount == LottieDrawable.INFINITE)
             "getAutoReverseAnimation" -> result.success(animationView.repeatMode == LottieDrawable.REVERSE)
             "setValue" -> {
-                val value = args["value"] as String
-                val keyPath = args["keyPath"] as String
-                val type = args["type"] as String
-                setValue(type, value, keyPath)
-                result.success(null)
+                val value = args["value"] as? String
+                val keyPath = args["keyPath"] as? String
+                val type = args["type"] as? String
+
+                if (value == null || keyPath == null || type == null) {
+                    result.error(
+                            "invalid_arguments",
+                            "setValue expects string arguments for value, type, and keyPath.",
+                            args,
+                    )
+                    return
+                }
+
+                val error = setValue(type, value, keyPath)
+                if (error == null) {
+                    result.success(null)
+                } else {
+                    result.error(error.code, error.message, error.details)
+                }
             }
             "setAnimationFromUrl" -> {
                 animationView.cancelAnimation()
@@ -222,27 +236,63 @@ class LottieView internal constructor(
 
     override fun onAnimationRepeat(animation: Animator) {}
 
-    private fun setValue(type: String, value: String, keyPath: String) {
+    private fun setValue(type: String, value: String, keyPath: String): MethodCallError? {
         val keyPathSegments = keyPath.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         val parsedKeyPath = KeyPath(*keyPathSegments)
         when (type) {
             "LOTColorValue" -> {
-                val callbackValue = LottieValueCallback(convertColor(value))
+                val color = convertColor(value)
+                        ?: return MethodCallError(
+                                "invalid_color_value",
+                                "Expected a color value formatted like 0xff0000ff or #ff0000ff.",
+                                value,
+                        )
+                val callbackValue = LottieValueCallback(color)
                 animationView.addValueCallback(parsedKeyPath, LottieProperty.COLOR, callbackValue)
             }
             "LOTOpacityValue" -> {
-                val opacity = value.toFloat() * 100
-                val callbackValue = LottieValueCallback(opacity.roundToInt())
+                val opacity = value.toFloatOrNull()
+                        ?: return MethodCallError(
+                                "invalid_opacity_value",
+                                "Expected opacity as a decimal string, for example 0.1.",
+                                value,
+                        )
+                val callbackValue = LottieValueCallback((opacity * 100).roundToInt())
                 animationView.addValueCallback(parsedKeyPath, LottieProperty.OPACITY, callbackValue)
             }
+            else ->
+                    return MethodCallError(
+                            "unsupported_value_type",
+                            "Unsupported value type: $type",
+                            type,
+                    )
         }
+
+        return null
     }
 
-    private fun convertColor(value: String): Int {
-        val alpha = value.substring(2,4).toInt(16)
-        val red = value.substring(4, 6).toInt(16)
-        val green = value.substring(6, 8).toInt(16)
-        val blue = value.substring(8, 10).toInt(16)
+    private fun convertColor(value: String): Int? {
+        val sanitizedValue =
+                when {
+                    value.startsWith("0x", ignoreCase = true) -> value.drop(2)
+                    value.startsWith("#") -> value.drop(1)
+                    else -> value
+                }
+
+        if (sanitizedValue.length != 8) {
+            return null
+        }
+
+        val alpha = sanitizedValue.substring(0, 2).toIntOrNull(16) ?: return null
+        val red = sanitizedValue.substring(2, 4).toIntOrNull(16) ?: return null
+        val green = sanitizedValue.substring(4, 6).toIntOrNull(16) ?: return null
+        val blue = sanitizedValue.substring(6, 8).toIntOrNull(16) ?: return null
         return Color.argb(alpha, red, green, blue)
     }
+
+    private data class MethodCallError(
+            val code: String,
+            val message: String,
+            val details: Any?,
+    )
 }
