@@ -74,7 +74,7 @@ class _LottieViewState extends State<LottieView> {
         return AndroidView(
           viewType: viewType,
           creationParams: creationParams,
-          creationParamsCodec: StandardMessageCodec(),
+          creationParamsCodec: const StandardMessageCodec(),
           onPlatformViewCreated: onPlatformViewCreated,
         );
 

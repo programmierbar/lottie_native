@@ -69,6 +69,29 @@ class _MyAppState extends State<MyApp> {
                     controller?.resume();
                   },
                 ),
+                TextButton(
+                  child: Text("Swap to Hamburger (URL)"),
+                  onPressed: () {
+                    controller?.setAnimationFromUrl(
+                      'https://raw.githubusercontent.com/airbnb/lottie-ios/master/Tests/Samples/HamburgerArrow.json',
+                    );
+                  },
+                ),
+                TextButton(
+                  child: Text("Swap to Watermelon (URL)"),
+                  onPressed: () {
+                    controller?.setAnimationFromUrl(
+                      'https://raw.githubusercontent.com/airbnb/lottie-ios/master/Tests/Samples/Watermelon.json',
+                    );
+                  },
+                ),
+                TextButton(
+                  child: Text("Swap to Asset"),
+                  onPressed: () {
+                    controller
+                        ?.setAnimationFromAsset('animations/newAnimation.json');
+                  },
+                ),
                 Text("From File"),
                 Container(
                   child: SizedBox(
@@ -112,9 +135,14 @@ class _MyAppState extends State<MyApp> {
   void onViewCreated(LottieController controller) {
     this.controller = controller;
 
-    // Listen for when the playback completes
-    controller.onPlayFinished.listen((bool animationFinished) {
-      print("Playback complete. Was Animation Finished? $animationFinished");
+    // Listen for all state changes (loaded, started, finished, cancelled)
+    controller.onStateChanged.listen((state) {
+      print("Animation state changed: $state");
+      if (state == LottieAnimationState.finished) {
+        print("Playback complete. Was Animation Finished? true");
+      } else if (state == LottieAnimationState.cancelled) {
+        print("Playback complete. Was Animation Finished? false");
+      }
     });
   }
 

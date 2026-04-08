@@ -1,3 +1,16 @@
+## 0.2.0
+
+- **FEAT**: Add runtime animation replacement methods (`setAnimationFromURL`, `setAnimationFromAsset`, `setAnimationFromJson`) on `LottieController`
+- **PERF**: Android: Enable async updates and simplify platform view for better performance
+- **FIX**: Replace deprecated `Color.value` with `toARGB32()`
+- **FIX**: Android: Move failure listener to init for all animation sources
+- **FIX**: Validate dynamic value updates on iOS and Android to avoid crashes on malformed color or opacity inputs
+- **FIX**: Android: Align `setAnimationProgress` and `setProgressWithFrame` behavior with iOS
+- **BUILD**: Upgrade Kotlin to 2.1.0, AGP to 8.7.0, Java to 17
+- **BUILD**: Upgrade lottie-android 6.3.0 → 6.7.1
+- **BUILD**: Upgrade lottie-ios ~> 4.4.3 → ~> 4.6.0
+- **BUILD**: Upgrade appcompat 1.6.1 → 1.7.1
+
 ## 0.1.4
 
  - **FEAT**: Provide animation state changes as stream to lottie controller
